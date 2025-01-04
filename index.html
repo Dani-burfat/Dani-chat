@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Chat Application</title>
+    <link rel="shortcut icon" href="no3.png" type="image/x-icon">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f1f1f1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chat {
+            width: 100%;
+            max-width: 600px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 80vh;
+        }
+
+        #messages {
+            flex-grow: 1;
+            padding: 20px;
+            background: rgb(61, 15, 15);
+            color: #fff;
+            border-radius: 10px;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        #sendMsg {
+            display: flex;
+            padding: 10px;
+            background: #AAA;
+            align-items: center;
+        }
+
+        #msgTxt {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            background: #f1f1f1;
+        }
+
+        #msgBtn, #clearBtn {
+            padding: 10px;
+            margin-left: 10px;
+            background-color: #0084ff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #msgBtn:hover, #clearBtn:hover {
+            background-color: #0073e6;
+        }
+
+        .outer {
+            display: flex;
+            margin-top: 10px;
+            justify-content: flex-start;
+        }
+
+        #inner {
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 70%;
+            word-wrap: break-word;
+            box-sizing: border-box;
+        }
+
+        .me {
+            background-color: #8800FF;
+            color: #fff;
+            align-self: flex-end;
+        }
+
+        .notMe {
+            background-color: #FFF;
+            color: #000;
+        }
+
+        button {
+            background: none;
+            border: none;
+            color: #ff0000;
+            cursor: pointer;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <center>
+        <div class="chat">
+            <div id="messages"></div>
+
+            <div id="sendMsg">
+                <input type="text" id="msgTxt" placeholder="Enter your message...">
+                <input type="submit" id="msgBtn" value="Send" onclick="module.sendMsg()">
+                <input type="button" id="clearBtn" value="Clear Chat" onclick="module.clearChat()">
+            </div>
+        </div>
+    </center>
+
+    <!-- Notification Sound -->
+    <audio id="notifSound" src="notification.mp3"></audio>
+
+    <script>
+        module = {};
+    </script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getDatabase, ref, set, remove, onChildAdded, onChildRemoved } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCJ81pHD2-xnKczsJyrWwIZao-rypkeDOo",
+            authDomain: "coder-8ddcf.firebaseapp.com",
+            projectId: "coder-8ddcf",
+            storageBucket: "coder-8ddcf.appspot.com",
+            messagingSenderId: "603139974872",
+            appId: "1:603139974872:web:98026f933d6f421116d9ad"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Variables
+        var msgTxt = document.getElementById('msgTxt');
+        var notifSound = document.getElementById('notifSound');
+        var sender;
+
+        if (sessionStorage.getItem('sender')) {
+            sender = sessionStorage.getItem('sender');
+        } else {
+            sender = prompt('PLEASE ENTER YOUR NAME');
+            sessionStorage.setItem('sender', sender);
+        }
+
+        // To Send Messages
+        module.sendMsg = function sendMsg() {
+            var msg = msgTxt.value;
+            if (msg.trim() !== "") {
+                var timestamp = new Date().getTime();
+                set(ref(db, "messages/" + timestamp), {
+                    msg: msg,
+                    sender: sender
+                });
+                msgTxt.value = "";
+            }
+        };
+
+        // To Clear Chat
+        module.clearChat = function clearChat() {
+            if (confirm("Are you sure you want to clear the entire chat?")) {
+                remove(ref(db, "messages")).then(() => {
+                    messages.innerHTML = "";
+                });
+            }
+        };
+
+        // To Receive Messages
+        onChildAdded(ref(db, "messages"), (data) => {
+            if (data.val().sender == sender) {
+                messages.innerHTML += "<div class='outer' id=" + data.key + "><div id='inner' class='me'>You: " + data.val().msg + "<button onclick='module.dltMsg(\"" + data.key + "\")'>DELETE</button></div></div>";
+            } else {
+                messages.innerHTML += "<div class='outer' id=" + data.key + "><div id='inner' class='notMe'>" + data.val().sender + ": " + data.val().msg + "</div></div>";
+                notifSound.play(); // Play notification sound
+            }
+        });
+
+        // To Delete Specific Messages
+        module.dltMsg = function dltMsg(key) {
+            remove(ref(db, "messages/" + key));
+        };
+
+        // When a Message is Deleted
+        onChildRemoved(ref(db, "messages"), (data) => {
+            var msgBox = document.getElementById(data.key);
+            if (msgBox) {
+                messages.removeChild(msgBox);
+            }
+        });
+    </script>
+</body>
+</html>
