@@ -101,6 +101,13 @@
             cursor: pointer;
             font-size: 12px;
         }
+
+        #inner div {
+    font-size: 10px;
+    color: gray;
+    margin-top: 5px;
+}
+
     </style>
 </head>
 <body>
@@ -194,6 +201,40 @@
                 messages.removeChild(msgBox);
             }
         });
+
+        module.sendMsg = function sendMsg() {
+    var msg = msgTxt.value;
+    if (msg.trim() !== "") {
+        var timestamp = new Date().toLocaleString(); // Save readable time
+        var key = new Date().getTime(); // Unique identifier for each message
+        set(ref(db, "messages/" + key), {
+            msg: msg,
+            sender: sender,
+            timestamp: timestamp
+        });
+        msgTxt.value = "";
+    }
+};
+
+// To Receive Messages
+onChildAdded(ref(db, "messages"), (data) => {
+    const messageData = data.val();
+    const messageHtml = `
+        <div class='outer' id="${data.key}">
+            <div id='inner' class='${messageData.sender === sender ? 'me' : 'notMe'}'>
+                ${messageData.sender === sender ? 'You' : messageData.sender}: ${messageData.msg}
+                ${messageData.sender === sender ? `<button onclick='module.dltMsg("${data.key}")'>DELETE</button>` : ''}
+                <div style="font-size: 10px; color: gray; margin-top: 5px;">${messageData.timestamp}</div>
+            </div>
+        </div>`;
+    messages.innerHTML += messageHtml;
+
+    // Play notification sound for messages from others
+    if (messageData.sender !== sender) {
+        notifSound.play();
+    }
+});
+
     </script>
 </body>
 </html>
